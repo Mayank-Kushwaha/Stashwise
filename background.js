@@ -4,6 +4,7 @@ import { getCfg } from './core/kv.js';
 import { extractPage } from './extractor.js';
 import { savePage, saveUrl, retry } from './core/save.js';
 import { sync } from './core/store.js';
+import { backfill } from './core/images.js';
 
 const mark = (tabId, text, color) => {
   if (tabId == null) return;
@@ -55,4 +56,5 @@ X.alarms.onAlarm.addListener(async a => {
   if (a.name !== 'sync') return;
   await sync().catch(() => {});
   await retry().catch(() => {});
+  await backfill().catch(() => {}); // no-op unless the optional all-sites permission was granted
 });

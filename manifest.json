@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "description": "One-click save. AI titles, descriptions and topics, search, and Ask AI over your saved sites. Synced through your private GitHub Gist.",
   "permissions": ["activeTab", "scripting", "storage", "alarms", "contextMenus"],
+  "optional_host_permissions": ["http://*/*", "https://*/*"],
   "host_permissions": [
     "https://api.github.com/*",
     "https://gist.githubusercontent.com/*",

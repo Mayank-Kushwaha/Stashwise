@@ -24,12 +24,13 @@ const digest = p => [
   `Text: ${clip(p.text, 2200)}`,
 ].filter(Boolean).join('\n');
 
-async function add(url, title, desc, q, c) {
+// media: {img, ico} from the open tab. img '' = checked, none found; undefined = not checked (backfill will look).
+async function add(url, title, desc, q, c, media = {}) {
   const id = await idOf(url);
   const dup = await tx(async () => {
     if (S.bm[id] && !S.bm[id].del) return true;
     const now = Date.now();
-    put({ id, url, t: clip(title, 120) || host(url), d: clip(desc, 260), tags: [], sec: 'Unsorted', top: 'Inbox', ts: now, u: now, pend: 1 });
+    put({ id, url, t: clip(title, 120) || host(url), d: clip(desc, 260), tags: [], sec: 'Unsorted', top: 'Inbox', ts: now, u: now, pend: 1, ...media });
     S.q[id] = { d: q, n: 0 };
     await persist();
     return false;
@@ -45,7 +46,7 @@ export async function savePage(p, c) {
   const url = normUrl(p.url);
   if (!url) return { st: 'bad' };
   if (denied(url, c.deny)) return { st: 'denied' };
-  return add(url, p.title, p.desc, digest(p), c);
+  return add(url, p.title, p.desc, digest(p), c, { img: p.img || '', ico: p.ico || '' });
 }
 
 /** Save by URL only; Gemini reads the page. Used for the PWA and link right-click. */
@@ -106,6 +107,14 @@ export const edit = (id, p) => tx(async () => {
   if (!cur) return;
   put({ ...cur, ...p, u: Date.now() });
   delete S.q[id]; // a manual edit wins over any queued AI analysis
+  await persist();
+}).then(() => push().catch(() => {}));
+
+/** Pin/unpin. pin = time pinned (0 = not pinned). Unlike edit(), keeps any queued AI analysis. */
+export const pin = (id, on) => tx(async () => {
+  const cur = S.bm[id];
+  if (!cur || cur.del) return;
+  put({ ...cur, pin: on ? Date.now() : 0, u: Date.now() });
   await persist();
 }).then(() => push().catch(() => {}));
 

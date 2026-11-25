@@ -4,9 +4,10 @@ import { get, set, getCfg, saveCfg } from '../core/kv.js';
 import { S, tx, live, put, persist, push, sync } from '../core/store.js';
 import { index } from '../core/topics.js';
 import { kw, rrf } from '../core/search.js';
-import { saveUrl, edit, remove, retry, ask, semantic, preview, applyMoves } from '../core/save.js';
+import { saveUrl, edit, pin, remove, retry, ask, semantic, preview, applyMoves } from '../core/save.js';
 import * as G from '../core/gist.js';
 import { embed, gen } from '../core/ai.js';
+import * as IM from '../core/images.js';
 
 const $ = s => document.querySelector(s);
 const st = { sec: '', top: '', q: '', fused: null, pend: false, lim: 120, view: 'lib', synced: '' };
@@ -27,58 +28,89 @@ function items() {
   let l = live();
   if (st.pend) l = l.filter(b => b.pend);
   else if (st.sec) l = l.filter(b => b.sec === st.sec && (!st.top || b.top === st.top));
-  if (!st.q) return l.sort((a, b) => b.ts - a.ts);
+  // Pinned first (most recently pinned on top), then newest. Search results keep relevance order.
+  if (!st.q) return l.sort((a, b) => (b.pin || 0) - (a.pin || 0) || b.ts - a.ts);
   if (st.fused) { const m = new Map(l.map(b => [b.id, b])); return st.fused.map(i => m.get(i)).filter(Boolean); }
   return kw(l, st.q);
 }
 
+const ic = n => `<svg><use href="#i-${n}"/></svg>`;
+const hue = s => { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
+
 function side() {
   const all = live(), { t } = index(all), secs = {};
   for (const x of Object.values(t)) (secs[x.sec] ??= []).push(x);
-  const pend = all.filter(b => b.pend).length;
+  const pend = all.filter(b => b.pend).length, pins = all.filter(b => b.pin).length;
   const on = (s, p) => st.sec === s && st.top === p && !st.pend ? ' on' : '';
-  let h = `<button class="it${st.sec || st.pend ? '' : ' on'}" data-s="" data-p="">All sites <i>${all.length}</i></button>`;
-  if (pend) h += `<button class="it${st.pend ? ' on' : ''}" data-pend="1">Waiting for AI <i>${pend}</i></button>`;
+  const it = (cls, attrs, label, n, icon = '') => `<button class="it${cls}" ${attrs}>${icon}<span>${esc(label)}</span><i>${n}</i></button>`;
+  let h = it(st.sec || st.pend ? '' : ' on', 'data-s="" data-p=""', 'All sites', all.length, ic('grid'));
+  if (pend) h += it(' warn' + (st.pend ? ' on' : ''), 'data-pend="1"', 'Waiting for AI', pend, ic('clock'));
   for (const s of Object.keys(secs).sort((a, b) => a === 'Unsorted' ? 1 : b === 'Unsorted' ? -1 : a.localeCompare(b))) {
     const n = secs[s].reduce((a, x) => a + x.ids.length, 0);
-    h += `<button class="it sec${on(s, '')}" data-s="${esc(s)}" data-p="">${esc(s)} <i>${n}</i></button>`;
+    h += `<div class="grp">${it(' sec' + on(s, ''), `data-s="${esc(s)}" data-p=""`, s, n)}`;
     for (const x of secs[s].sort((a, b) => b.ids.length - a.ids.length))
-      h += `<button class="it top${on(s, x.top)}" data-s="${esc(s)}" data-p="${esc(x.top)}">${esc(x.top)} <i>${x.ids.length}</i></button>`;
+      h += it(' top' + on(s, x.top), `data-s="${esc(s)}" data-p="${esc(x.top)}"`, x.top, x.ids.length);
+    h += '</div>';
   }
-  $('#side').innerHTML = h;
+  st.pins = pins;
+  $('#tree').innerHTML = h;
   $('#secs').innerHTML = Object.keys(secs).map(s => `<option value="${esc(s)}">`).join('');
   $('#tops').innerHTML = Object.values(t).map(x => `<option value="${esc(x.top)}">`).join('');
 }
 
-const card = b => `<article class="card"><div class="hd"><div class="av">${esc((host(b.url)[0] || '?').toUpperCase())}</div><div>
-<a class="t" href="${safe(b.url)}" target="_blank" rel="noopener noreferrer">${esc(b.t)}</a><div class="host">${esc(host(b.url))}</div></div></div>
+const pinBtn = b => `<button class="ib" data-pin="${b.id}" aria-pressed="${!!b.pin}" title="${b.pin ? 'Unpin' : 'Pin to top of its category'}" aria-label="${b.pin ? 'Unpin' : 'Pin'}">${ic('pin')}</button>`;
+// Images load straight from each site; no referrer is sent. Broken or tiny images are removed (see load/error listeners).
+const pic = (u, cls = '') => `<img${cls} src="${safe(u)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`;
+const letter = h => esc((h[0] || '?').toUpperCase());
+// Banner: the site's preview image, or a coloured placeholder with its icon (letter if the icon fails too).
+const banner = (b, h) => b.img
+  ? `<div class="pv" style="--h:${hue(h)}" data-l="${letter(h)}">${pic(b.img)}</div>`
+  : `<div class="pv ph" style="--h:${hue(h)}">${b.ico ? pic(b.ico) : ''}<span>${letter(h)}</span></div>`;
+const card = b => { const h = host(b.url); return `<article class="card${b.pin ? ' pinned' : ''}">
+${banner(b, h)}
+<div class="hd"><div class="av" style="--h:${hue(h)}">${esc((h[0] || '?').toUpperCase())}${b.ico ? pic(b.ico) : ''}</div><div class="hb">
+<a class="t" href="${safe(b.url)}" target="_blank" rel="noopener noreferrer">${esc(b.t)}</a><div class="host">${esc(h)}</div></div>${b.pin ? `<span class="pinb" title="Pinned">${ic('pin')}</span>` : ''}</div>
 ${b.d ? `<p class="d">${esc(b.d)}</p>` : ''}
-<div class="tg">${(b.tags || []).map(x => `<span>${esc(x)}</span>`).join('')}</div>
-<div class="ft"><span>${b.pend ? '<span class="chip w">waiting for AI</span>' : `${esc(b.sec)} / ${esc(b.top)}`}</span>
-<span><button data-e="${b.id}">Edit</button><button data-x="${b.id}">Delete</button></span></div></article>`;
+${b.tags?.length ? `<div class="tg">${b.tags.map(x => `<span>${esc(x)}</span>`).join('')}</div>` : ''}
+<div class="ft">${b.pend ? '<span class="chip">Waiting for AI</span>' : `<span class="cat">${esc(b.sec)} · ${esc(b.top)}</span>`}
+<div class="ca">${pinBtn(b)}<button class="ib" data-e="${b.id}" title="Edit" aria-label="Edit">${ic('edit')}</button><button class="ib del" data-x="${b.id}" title="Delete" aria-label="Delete">${ic('trash')}</button></div></div></article>`; };
+
+const empty = (icon, title, text) => `<div class="empty"><span class="badge">${ic(icon)}</span><h3>${esc(title)}</h3><p>${esc(text)}</p></div>`;
 
 function list() {
   const l = items(), show = l.slice(0, st.lim);
-  const where = st.pend ? 'Waiting for AI' : st.sec ? `${st.sec}${st.top ? ' / ' + st.top : ''}` : 'All sites';
-  $('#bar').textContent = `${where} · ${l.length} ${l.length === 1 ? 'site' : 'sites'}${st.synced ? ' · synced ' + st.synced : ''}`;
-  $('#lib').innerHTML = l.length
-    ? `<div class="grid">${show.map(card).join('')}</div>${l.length > show.length ? '<p class="empty"><button id="more">Show more</button></p>' : ''}`
-    : `<p class="empty">${st.q ? 'No match. Press Enter to search by meaning.' : 'Nothing saved yet. Click the toolbar icon on any page, or press Alt+Shift+S.'}</p>`;
+  $('#vt').textContent = st.q ? `Results for “${st.q}”` : st.pend ? 'Waiting for AI' : st.top || st.sec || 'All sites';
+  const n = `${l.length} ${l.length === 1 ? 'site' : 'sites'}`;
+  $('#vs').textContent = [st.top && !st.q ? `${st.sec} · ${n}` : n, !st.q && !st.sec && !st.pend && st.pins ? `${st.pins} pinned` : '', st.synced && `Synced ${st.synced}`].filter(Boolean).join(' · ');
+  const miss = st.imgOk === false && live().filter(b => b.img === undefined).length;
+  $('#imgBar').hidden = !miss;
+  if (miss) $('#imgN').textContent = `${miss} ${miss === 1 ? 'site has' : 'sites have'} no preview yet.`;
+  $('#cards').innerHTML = l.length
+    ? `<div class="grid">${show.map(card).join('')}</div>${l.length > show.length ? '<div class="more"><button id="more" class="btn">Show more</button></div>' : ''}`
+    : st.q ? empty('search', 'No matches', 'Press Enter to also search by meaning.')
+      : empty('book', 'Nothing saved yet', 'Click the toolbar icon on any page, press Alt+Shift+S, or use Add.');
 }
 const render = () => { side(); list(); };
 
 /* ---------- actions ---------- */
-async function doSync() {
+/** Background syncs are silent (spinner only); a manual sync also confirms with a toast. */
+let syncing = false;
+async function doSync(manual) {
   const c = await getCfg();
-  if (!c.gh) return toast('Add a GitHub token in Settings to sync');
-  await busy('Syncing', async () => {
+  if (!c.gh) return manual && toast('Add a GitHub token in Settings to sync');
+  if (syncing) return;
+  syncing = true;
+  $('#sy').classList.add('spin');
+  try {
     await sync();
     await retry();
     st.synced = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     await tx(() => 0);
     render();
-    toast('Synced');
-  });
+    if (manual) toast('Synced');
+  } catch (e) { toast(`Sync failed: ${e.message}`); }
+  finally { syncing = false; $('#sy').classList.remove('spin'); }
+  runBackfill(false); // fills previews for sites saved elsewhere (e.g. from the phone)
 }
 
 async function search(deep) {
@@ -98,12 +130,14 @@ async function search(deep) {
 async function doAsk(q) {
   const c = await getCfg(), out = $('#ans');
   if (!c.gem) return toast('Add your Gemini key in Settings');
-  out.innerHTML = '<p class="empty">Thinking…</p>';
+  $('#aq').value = q;
+  $('#ex').hidden = true;
+  out.innerHTML = '<div class="dots" aria-label="Thinking"><i></i><i></i><i></i></div>';
   try {
     const r = await ask(c, q);
     const ids = r.ids.length ? r.ids : r.hits || [];
-    out.innerHTML = `<div class="ans">${esc(r.a)}</div>${ids.length ? `<p class="hint">${r.ids.length ? 'Sources' : 'Closest saved sites'}</p>` : ''}<div class="grid">${ids.map(i => S.bm[i]).filter(Boolean).map(card).join('')}</div>`;
-  } catch (e) { out.innerHTML = `<p class="empty">Could not answer: ${esc(e.message)}</p>`; }
+    out.innerHTML = `<div class="ans">${esc(r.a)}</div>${ids.length ? `<p class="lbl">${r.ids.length ? 'Sources' : 'Closest saved sites'}</p>` : ''}<div class="grid">${ids.map(i => S.bm[i]).filter(Boolean).map(card).join('')}</div>`;
+  } catch (e) { out.innerHTML = empty('spark', 'Could not answer', e.message); }
 }
 
 function openEdit(id) {
@@ -127,27 +161,84 @@ const form = () => Object.fromEntries(new FormData($('#fSet')));
 document.addEventListener('click', e => {
   const t = e.target.closest('button');
   if (!t) return;
-  if (t.dataset.e) openEdit(t.dataset.e);
+  if (t.dataset.pin) {
+    const id = t.dataset.pin, on = !S.bm[id]?.pin;
+    pin(id, on).then(() => {
+      render();
+      document.querySelectorAll(`#ans [data-pin="${id}"]`).forEach(x => x.closest('.card').outerHTML = card(S.bm[id]));
+      toast(on ? 'Pinned to the top of its category' : 'Unpinned');
+    });
+  }
+  else if (t.dataset.act === 're') { nav(false); $('#re').click(); }
+  else if (t.dataset.act === 'img') enableImages();
+  else if (t.dataset.act === 'imgX') { st.imgOk = null; list(); }
+  else if (t.closest('#ex')) doAsk(t.textContent);
+  else if (t.dataset.e) openEdit(t.dataset.e);
   else if (t.dataset.x) { if (confirm('Delete this bookmark?')) remove(t.dataset.x).then(() => { render(); toast('Deleted'); }); }
   else if (t.id === 'more') { st.lim += 120; list(); }
-  else if (t.closest('#side')) {
+  else if (t.closest('#tree')) {
     st.pend = !!t.dataset.pend; st.sec = t.dataset.s || ''; st.top = t.dataset.p || '';
-    document.body.classList.remove('nav'); render();
+    if (st.view !== 'lib') document.querySelector('[data-v=lib]').click();
+    nav(false); render(); $('main').scrollTop = 0;
   }
 });
-$('#nav').onclick = () => document.body.classList.toggle('nav');
-$('#sf').onsubmit = e => { e.preventDefault(); search(true); };
+
+/* Site previews */
+// Permission request must come straight from the click (no await before it), or the browser refuses.
+function enableImages() {
+  IM.ask().then(async ok => {
+    if (!ok) return toast('Permission declined. New saves still get previews.');
+    st.imgOk = true;
+    list();
+    await runBackfill(true);
+  }).catch(e => toast('Could not request permission: ' + e.message));
+}
+async function runBackfill(manual) {
+  if (!st.imgOk) return;
+  if (manual) toast('Fetching site previews…');
+  const n = await IM.backfill().catch(() => 0);
+  await tx(() => 0);
+  render();
+  if (manual) toast(n ? `Added ${n} preview ${n === 1 ? 'image' : 'images'}` : 'Done. No new preview images found.');
+}
+// A broken (or tracking-pixel-sized) preview turns its banner into the letter placeholder.
+const toPh = pv => { pv.classList.add('ph'); pv.innerHTML = `<span>${esc(pv.dataset.l || '?')}</span>`; };
+document.addEventListener('error', e => {
+  const i = e.target;
+  if (i.tagName !== 'IMG') return;
+  const pv = i.closest('.pv');
+  pv && !pv.classList.contains('ph') ? toPh(pv) : i.remove();
+}, true);
+document.addEventListener('load', e => {
+  const i = e.target, pv = i.tagName === 'IMG' && i.closest('.pv:not(.ph)');
+  if (pv && (i.naturalWidth < 80 || i.naturalHeight < 40)) toPh(pv);
+}, true);
+
+/* Mobile drawer: menu button opens; close button, backdrop tap, Esc, or picking a section closes. */
+function nav(open) {
+  document.body.classList.toggle('nav', open);
+  $('#scrim').hidden = !open;
+  $('#nav').setAttribute('aria-expanded', open);
+  if (open) $('#navX').focus();
+}
+$('#nav').onclick = () => nav(!document.body.classList.contains('nav'));
+$('#navX').onclick = () => { nav(false); $('#nav').focus(); };
+$('#scrim').onclick = () => nav(false);
+matchMedia('(min-width: 821px)').addEventListener('change', e => e.matches && nav(false));
+
+$('#sf').onsubmit = e => { e.preventDefault(); $('#q').blur(); search(true); };
 $('#q').oninput = () => search(false);
-document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
+document.querySelectorAll('.seg button').forEach(b => b.onclick = () => {
   st.view = b.dataset.v;
-  document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
-  $('#lib').hidden = $('#bar').hidden = st.view !== 'lib';
+  document.querySelectorAll('.seg button').forEach(x => x.classList.toggle('on', x === b));
+  $('#lib').hidden = st.view !== 'lib';
   $('#ask').hidden = st.view !== 'ask';
-  if (st.view === 'ask') $('#aq').focus();
+  document.body.classList.toggle('asking', st.view === 'ask');
+  if (st.view === 'ask' && matchMedia('(hover:hover)').matches) $('#aq').focus();
 });
 $('#af').onsubmit = e => { e.preventDefault(); const q = $('#aq').value.trim(); if (q) doAsk(q); };
 $('#add').onclick = () => $('#dAdd').showModal();
-$('#sy').onclick = doSync;
+$('#sy').onclick = () => doSync(true);
 $('#se').onclick = openSettings;
 
 $('#dEdit').onclose = async e => {
@@ -231,7 +322,7 @@ async function openKeys() {
 }
 $('#kb').onclick = openKeys;
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') document.body.classList.remove('nav');
+  if (e.key === 'Escape' && document.body.classList.contains('nav')) return nav(false);
   if (e.ctrlKey || e.metaKey || e.altKey || document.querySelector('dialog[open]') || e.target.closest?.('input,textarea')) return;
   const go = { '/': () => { document.querySelector('[data-v=lib]').click(); $('#q').focus(); }, '?': openKeys,
     a: () => document.querySelector('[data-v=ask]').click(), n: () => $('#dAdd').showModal() }[e.key.toLowerCase()];
@@ -264,6 +355,8 @@ $('#reUndo').onclick = async () => {
 /* ---------- start ---------- */
 (async () => {
   await tx(() => 0);
+  st.imgOk = X?.permissions ? await IM.canFetch() : null; // null = PWA (cannot read other sites)
+  if (st.imgOk === null) $('#tImg').hidden = true;
   render();
   X?.storage?.onChanged?.addListener(ch => { if (ch.ver) tx(() => 0).then(render); });
   if (!X?.runtime?.id && location.protocol === 'https:' && 'serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});

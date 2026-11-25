@@ -36,7 +36,7 @@ const { kw, rrf } = await import('../core/search.js');
 const { enc, dec, dot, norm } = await import('../core/vec.js');
 const { place, reorg, index, TH } = await import('../core/topics.js');
 const { S, sync, live } = await import('../core/store.js');
-const { savePage, retry, edit, remove, ask } = await import('../core/save.js');
+const { savePage, retry, edit, pin, remove, ask } = await import('../core/save.js');
 const { saveCfg, getCfg } = await import('../core/kv.js');
 
 test('normUrl strips tracking, hash, www, trailing slash; rejects non-http', () => {
@@ -112,12 +112,13 @@ test('reorg merges duplicate topics and moves outliers', () => {
 
 test('pipeline: save -> AI file -> sync to gist; second device record merges; rate limit queues and retries', async () => {
   await saveCfg({ gh: 'tok', gem: 'key', dim: 768 });
-  const page = (url, title, text) => ({ url, title, desc: '', h: [], text });
+  const page = (url, title, text) => ({ url, title, desc: '', h: [], text, img: 'https://cdn.example/og.png', ico: '' });
 
   const r1 = await savePage(page('https://www.ilovepdf.com/?utm_source=x', 'iLovePDF', 'merge pdf compress pdf'), await getCfg());
   assert.equal(r1.st, 'ok');
   let b = live()[0];
   assert.equal(b.top, 'PDF Tools');
+  assert.equal(b.img, 'https://cdn.example/og.png', 'preview image kept through AI filing');
   assert.equal(b.pend, 0);
   assert.ok(S.vec[b.id]);
   assert.equal((await savePage(page('https://ilovepdf.com', 'x', 'pdf'), await getCfg())).st, 'dup');
@@ -141,12 +142,30 @@ test('pipeline: save -> AI file -> sync to gist; second device record merges; ra
   // edit and delete propagate as newer records
   await edit('zz', { t: 'Renamed' });
   assert.equal(JSON.parse(gist.files[`bm-${S.dev}.json`].content).find(x => x.id === 'zz').t, 'Renamed');
+  // pin syncs as a newer record and does not cancel queued AI work
+  S.q.zz = { d: 'x', n: 0 };
+  await pin('zz', true);
+  assert.ok(S.bm.zz.pin > 0 && S.q.zz, 'pinned, still queued');
+  assert.ok(JSON.parse(gist.files[`bm-${S.dev}.json`].content).find(x => x.id === 'zz').pin > 0);
+  await pin('zz', false);
+  assert.equal(S.bm.zz.pin, 0);
+  delete S.q.zz;
+
   await remove(r2.id);
   assert.ok(!live().some(x => x.id === r2.id));
 
   // Ask AI only links sites it was given
   const a = await ask(await getCfg(), 'which site has pdf tools?');
   assert.ok(a.hits.includes(b.id));
+});
+
+test('preview parse: og:image priority, relative URLs, entities, icon choice', async () => {
+  const { parse } = await import('../core/images.js');
+  const html = `<head><meta name="twitter:image" content="https://cdn.x.com/t.png">
+    <meta content='/img/og.png?a=1&amp;b=2' property="og:image"><link rel="icon" href="/f.ico"><link rel="apple-touch-icon" href="/apple.png"></head>`;
+  assert.deepEqual(parse(html, 'https://site.com/page'), { img: 'https://site.com/img/og.png?a=1&b=2', ico: 'https://site.com/apple.png' });
+  assert.deepEqual(parse('<html><body>none</body></html>', 'https://a.com/x'), { img: '', ico: 'https://a.com/favicon.ico' });
+  assert.equal(parse('<meta property="og:image" content="javascript:alert(1)">', 'https://a.com').img, '');
 });
 
 test('idOf is stable per URL', async () => assert.equal(await idOf('https://a.com'), await idOf('https://a.com')));

@@ -1,6 +1,6 @@
 // PWA service worker: caches only this app's own files (stale-while-revalidate). API calls are never cached.
-const V = 'vault-v2';
-const SHELL = ['./', 'index.html', 'app.css', 'app.js', 'manifest.webmanifest', '../core/util.js', '../core/kv.js', '../core/vec.js', '../core/merge.js', '../core/search.js', '../core/topics.js', '../core/gist.js', '../core/ai.js', '../core/store.js', '../core/save.js', '../icons/icon192.png'];
+const V = 'vault-v4';
+const SHELL = ['./', 'index.html', 'app.css', 'app.js', 'manifest.webmanifest', '../core/util.js', '../core/images.js', '../core/kv.js', '../core/vec.js', '../core/merge.js', '../core/search.js', '../core/topics.js', '../core/gist.js', '../core/ai.js', '../core/store.js', '../core/save.js', '../icons/icon192.png'];
 
 self.addEventListener('install', e => e.waitUntil(caches.open(V).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())));
 self.addEventListener('activate', e => e.waitUntil(

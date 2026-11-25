@@ -17,6 +17,8 @@ Second device: install the same way, paste the same GitHub token. The Gist is fo
 - Search box: instant keyword search. Press Enter to add search by meaning.
 - **Ask AI** tab: answers only from your saved sites and links the sources.
 - **⌨** (top right, or press `?`): list of shortcuts. On the dashboard: `/` search, `A` Ask AI, `N` save a URL, `Esc` close.
+- **Previews:** cards show the site's preview image (`og:image`), or its icon on a coloured placeholder. New saves get it from the open tab. For older sites and sites saved from the phone, click **Enable** on the dashboard notice (or Settings → *Fetch previews*). The browser asks once for permission to read pages, and the extension then reads each saved page's HTML. No AI is used. Images load straight from each site with no referrer sent.
+- **Pin** a card to keep it at the top of its category.
 - **⇄** Re-organize: merges near-duplicate topics and moves clear outliers. Local, uses no AI tokens. Preview, apply, undo.
 
 ## Mobile
