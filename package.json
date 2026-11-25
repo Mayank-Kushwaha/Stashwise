@@ -1,0 +1,12 @@
+{
+  "name": "ai-bookmark-vault",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "No dependencies. Scripts use only Node built-ins.",
+  "scripts": {
+    "test": "node --test tests/core.test.mjs",
+    "live": "node tests/live.mjs",
+    "icons": "node tools/make-icons.mjs"
+  }
+}

@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#4f46e5">
+<title>AI Bookmark Vault</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="../icons/icon32.png">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header>
+  <button id="nav" class="ic" title="Sections" aria-label="Sections">☰</button>
+  <h1>Vault</h1>
+  <nav class="tabs"><button data-v="lib" class="on">Library</button><button data-v="ask">Ask AI</button></nav>
+  <form id="sf" role="search"><input id="q" type="search" placeholder="Search saved sites…  (Enter = also search by meaning)" autocomplete="off"></form>
+  <button id="add" title="Save a URL">＋ Add</button>
+  <button id="re" class="ic" title="Re-organize topics" aria-label="Re-organize">⇄</button>
+  <button id="sy" class="ic" title="Sync now" aria-label="Sync">⟳</button>
+  <button id="se" class="ic" title="Settings" aria-label="Settings">⚙</button>
+  <button id="kb" class="ic" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">⌨</button>
+</header>
+<div class="shell">
+  <aside id="side"></aside>
+  <main>
+    <div id="bar"></div>
+    <section id="lib"></section>
+    <section id="ask" hidden>
+      <form id="af"><input id="aq" placeholder='Ask your library, e.g. "which site has PDF tools?"' autocomplete="off"><button>Ask</button></form>
+      <div id="ans"></div>
+    </section>
+  </main>
+</div>
+<div id="toast" role="status"></div>
+
+<dialog id="dEdit"><form method="dialog" id="fEdit">
+  <h2>Edit</h2>
+  <label>Title<input name="t" required maxlength="120"></label>
+  <label>Description<textarea name="d" rows="3" maxlength="260"></textarea></label>
+  <label>Tags (comma separated)<input name="tags"></label>
+  <div class="row"><label>Section<input name="sec" list="secs" required maxlength="30"></label><label>Topic<input name="top" list="tops" required maxlength="40"></label></div>
+  <datalist id="secs"></datalist><datalist id="tops"></datalist>
+  <menu><button value="x" class="ghost" formnovalidate>Cancel</button><button value="ok" class="pri">Save</button></menu>
+</form></dialog>
+
+<dialog id="dAdd"><form method="dialog" id="fAdd">
+  <h2>Save a URL</h2>
+  <label>Address<input name="u" type="url" required placeholder="https://"></label>
+  <p class="hint">Gemini reads the page for you, so the title, description and topic are filled in automatically.</p>
+  <menu><button value="x" class="ghost" formnovalidate>Cancel</button><button value="ok" class="pri">Save</button></menu>
+</form></dialog>
+
+<dialog id="dSet"><form method="dialog" id="fSet">
+  <h2>Settings</h2>
+  <label>GitHub token <small>classic, <code>gist</code> scope only</small><input name="gh" type="password" autocomplete="off" spellcheck="false"></label>
+  <label>Gemini API key <small>free key from aistudio.google.com</small><input name="gem" type="password" autocomplete="off" spellcheck="false"></label>
+  <label>Gemini text model <small>comma separated; falls back automatically if one is overloaded</small><input name="gen"></label>
+  <label>Never send these sites to AI <small>comma separated words</small><input name="deny" placeholder="intranet, mybank"></label>
+  <p class="hint" id="info"></p>
+  <p class="hint">Keys stay on this device only. Free-tier Gemini may use what you send to improve Google products; pages on the never-send list and private hosts are skipped.</p>
+  <div class="row"><button type="button" id="tGh" class="ghost">Test GitHub</button><button type="button" id="tGem" class="ghost">Test Gemini</button><button type="button" id="exp" class="ghost">Export</button><label class="file ghost">Import<input id="imp" type="file" accept=".json" hidden></label></div>
+  <menu><button value="x" class="ghost" formnovalidate>Close</button><button value="ok" class="pri">Save</button></menu>
+</form></dialog>
+
+<dialog id="dKb"><form method="dialog">
+  <h2>Keyboard shortcuts</h2>
+  <div id="kbBody"></div>
+  <menu><button value="x" class="pri">Close</button></menu>
+</form></dialog>
+
+<dialog id="dRe"><form method="dialog">
+  <h2>Re-organize</h2>
+  <div id="reBody" class="list"></div>
+  <menu><button value="x" class="ghost">Close</button><button type="button" id="reUndo" class="ghost" hidden>Undo last</button><button type="button" id="reGo" class="pri" hidden>Apply</button></menu>
+</form></dialog>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
