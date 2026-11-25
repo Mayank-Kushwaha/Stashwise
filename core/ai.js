@@ -4,14 +4,14 @@ import { sleep, clip, tc, parseJson } from './util.js';
 import { norm } from './vec.js';
 
 const B = 'https://generativelanguage.googleapis.com/v1beta/';
-const REV = '2026-05-20';
 
 async function post(c, path, body) {
   if (!c.gem) throw Object.assign(new Error('No Gemini key'), { status: 401 });
   for (let i = 0; ; i++) {
     const r = await fetch(B + path, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': c.gem, ...(path === 'interactions' ? { 'Api-Revision': REV } : {}) },
+      // No Api-Revision header: Gemini's CORS preflight rejects it, which would break the PWA.
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': c.gem },
       body: JSON.stringify(body),
     });
     if (r.ok) return r.json();

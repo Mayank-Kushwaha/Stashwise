@@ -20,7 +20,7 @@ Second device: install the same way, paste the same GitHub token. The Gist is fo
 - **⇄** Re-organize: merges near-duplicate topics and moves clear outliers. Local, uses no AI tokens. Preview, apply, undo.
 
 ## Mobile
-Chrome on Android has no extensions. Publish this folder with GitHub Pages and open `/app/` on the phone, then *Add to Home screen*. Enter the same two keys. Use **＋ Add** or Android's Share menu to save a URL (Gemini reads the page).
+Chrome on Android has no extensions. Open **https://mayank-kushwaha.github.io/Ai-Chrome-Extensions/app/** on the phone, then *Add to Home screen* (iPhone: Safari → Share → Add to Home Screen). It is deployed by `.github/workflows/vault-pages.yml` on every push that changes `app/`, `core/` or `icons/`; only those folders are published. Enter the same two keys. Use **＋ Add** or Android's Share menu to save a URL (Gemini reads the page).
 
 ## Tests
 - `npm test`: offline unit and pipeline tests (fake GitHub and Gemini).
