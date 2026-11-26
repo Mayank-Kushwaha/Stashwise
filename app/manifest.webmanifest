@@ -1,6 +1,7 @@
 {
-  "name": "AI Bookmark Vault",
-  "short_name": "Vault",
+  "name": "Stashwise",
+  "short_name": "Stashwise",
+  "description": "Your stash, but smarter.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

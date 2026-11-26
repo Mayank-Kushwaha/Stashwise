@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "AI Bookmark Vault",
-  "version": "1.0.0",
-  "description": "One-click save. AI titles, descriptions and topics, search, and Ask AI over your saved sites. Synced through your private GitHub Gist.",
+  "name": "Stashwise",
+  "version": "1.1.0",
+  "description": "Your stash, but smarter. One-click save with AI titles, descriptions and topics, semantic search and Ask AI. Synced through your own GitHub Gist.",
+  "homepage_url": "https://github.com/Mayank-Kushwaha/Stashwise",
   "permissions": ["activeTab", "scripting", "storage", "alarms", "contextMenus"],
   "optional_host_permissions": ["http://*/*", "https://*/*"],
   "host_permissions": [
@@ -11,12 +12,12 @@
     "https://generativelanguage.googleapis.com/*"
   ],
   "background": { "service_worker": "background.js", "scripts": ["background.js"], "type": "module" },
-  "action": { "default_title": "Save to Vault (Alt+Shift+S)" },
+  "action": { "default_title": "Save to Stashwise (Alt+Shift+S)" },
   "commands": {
-    "save-page": { "suggested_key": { "default": "Alt+Shift+S" }, "description": "Save this page to the Vault" },
-    "open-vault": { "suggested_key": { "default": "Alt+Shift+V" }, "description": "Open the Vault" }
+    "save-page": { "suggested_key": { "default": "Alt+Shift+S" }, "description": "Save this page to Stashwise" },
+    "open-vault": { "suggested_key": { "default": "Alt+Shift+V" }, "description": "Open Stashwise" }
   },
   "options_ui": { "page": "app/index.html", "open_in_tab": true },
   "icons": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png", "128": "icons/icon128.png" },
-  "browser_specific_settings": { "gecko": { "id": "ai-bookmark-vault@mayank.local", "strict_min_version": "121.0" } }
+  "browser_specific_settings": { "gecko": { "id": "stashwise@mayank-kushwaha.github.io", "strict_min_version": "121.0" } }
 }

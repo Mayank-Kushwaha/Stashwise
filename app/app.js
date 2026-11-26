@@ -175,7 +175,7 @@ async function openSettings() {
   dGh.open = !c.gh; dGem.open = !c.gem;
   $('#gistInfo').innerHTML = c.gist
     ? `Your bookmarks are stored in <a href="https://gist.github.com/${esc(c.gist)}" target="_blank" rel="noopener">this secret Gist</a>. Nothing to set up here.`
-    : 'Add a GitHub token above and press Save. The Vault then creates a secret Gist named <i>AI Bookmark Vault data</i>, or finds the one you already have.';
+    : 'Add a GitHub token above and press Save. Stashwise then creates a secret Gist named <i>AI Bookmark Vault data</i>, or finds the one you already have.';
   $('#info').textContent = `This device: ${S.dev} · ${live().length} sites · ${Object.keys(S.q).length} waiting for AI`;
   $('#dSet').showModal();
 }
@@ -242,8 +242,8 @@ function gxRender(br) {
   document.querySelectorAll('#gxTabs button').forEach(b => b.classList.toggle('on', b.dataset.b === br));
   const keep = '<small>Keep this folder; the browser runs the extension from it. Don\'t delete or move it.</small>';
   const after = [
-    'Pin it: click the puzzle-piece icon in the toolbar, then the pin next to <b>AI Bookmark Vault</b>.',
-    'The Vault opens by itself. In <b>Settings</b>, paste the <b>same GitHub token</b> you use on your other devices, plus your Gemini key. Your bookmarks sync in.',
+    'Pin it: click the puzzle-piece icon in the toolbar, then the pin next to <b>Stashwise</b>.',
+    'Stashwise opens by itself. In <b>Settings</b>, paste the <b>same GitHub token</b> you use on your other devices, plus your Gemini key. Your bookmarks sync in.',
   ];
   const steps = br === 'firefox' ? [
     `Download the zip and extract it (right-click → <b>Extract All</b>).`,
@@ -468,13 +468,13 @@ $('#tGem').onclick = async () => {
 $('#exp').onclick = async () => {
   await tx(() => 0);
   const blob = new Blob([JSON.stringify({ v: 1, bm: Object.values(S.bm), vec: S.vec })], { type: 'application/json' });
-  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: `vault-${new Date().toISOString().slice(0, 10)}.json` });
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: `stashwise-${new Date().toISOString().slice(0, 10)}.json` });
   a.click();
   URL.revokeObjectURL(a.href);
 };
 $('#imp').onchange = e => busy('Importing', async () => {
   const j = JSON.parse(await e.target.files[0].text());
-  if (!Array.isArray(j.bm)) throw new Error('Not a vault export');
+  if (!Array.isArray(j.bm)) throw new Error('Not a Stashwise export');
   await tx(async () => {
     const now = Date.now();
     for (const b of j.bm) if (b?.id && /^https?:\/\//.test(b.url || '') && !S.bm[b.id]) put({ ...b, u: now }, j.vec?.[b.id] && [now, j.vec[b.id][1]]);
@@ -495,8 +495,8 @@ async function openKeys() {
     const g = n => cmds.find(c => c.name === n)?.shortcut;
     h += `<h3>Anywhere in the browser</h3>${rows([
       ['Save the current page', keys(g('save-page'))],
-      ['Open the Vault', keys(g('open-vault'))],
-      ['Save page or link', 'Right-click → Save to Vault'],
+      ['Open Stashwise', keys(g('open-vault'))],
+      ['Save page or link', 'Right-click → Save to Stashwise'],
       ['Save the current page', 'Click the toolbar icon'],
     ])}<p class="hint">To change these, open <code>${/firefox/i.test(navigator.userAgent) ? 'about:addons → ⚙ → Manage Extension Shortcuts' : 'chrome://extensions/shortcuts'}</code>.</p>`;
   }

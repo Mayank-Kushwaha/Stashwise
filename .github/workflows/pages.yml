@@ -1,0 +1,36 @@
+# Publishes the Stashwise web app (app/, core/, icons/) and the installable extension zip to GitHub Pages.
+name: Deploy Pages
+on:
+  push:
+    branches: [main]
+    paths: ['app/**', 'core/**', 'icons/**', 'manifest.json', 'background.js', 'extractor.js', 'README.md', 'LICENSE', '.github/workflows/pages.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}app/
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Stage web app
+        run: |
+          mkdir _site
+          cp -r app core icons _site/
+          printf '<!doctype html><meta http-equiv="refresh" content="0;url=app/"><a href="app/">Open Stashwise</a>' > _site/index.html
+          touch _site/.nojekyll
+      - name: Pack extension zip (runtime files only; manifest.json at the zip root)
+        run: python3 -m zipfile -c _site/stashwise.zip manifest.json background.js extractor.js README.md LICENSE app core icons
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

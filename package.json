@@ -1,6 +1,7 @@
 {
-  "name": "ai-bookmark-vault",
-  "version": "1.0.0",
+  "name": "stashwise",
+  "version": "1.1.0",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "description": "No dependencies. Scripts use only Node built-ins.",

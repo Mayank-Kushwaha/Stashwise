@@ -1,5 +1,6 @@
 // GitHub Gist REST client (docs.github.com/en/rest/gists). Needs a token with the `gist` scope.
 const B = 'https://api.github.com/gists';
+// Kept from the project's old name on purpose: every device finds the data Gist by this exact description.
 export const DESC = 'AI Bookmark Vault data';
 
 async function call(tok, path, init = {}, etag) {
@@ -24,7 +25,7 @@ export const raw = async url => { const r = await fetch(url); if (!r.ok) throw n
 
 export const create = async tok => (await call(tok, '', {
   method: 'POST',
-  body: JSON.stringify({ description: DESC, public: false, files: { 'README.md': { content: 'Data for AI Bookmark Vault. Edit through the app.' } } }),
+  body: JSON.stringify({ description: DESC, public: false, files: { 'README.md': { content: 'Data for Stashwise (https://github.com/Mayank-Kushwaha/Stashwise). Edit through the app.' } } }),
 })).data.id;
 
 /** Oldest gist of ours (so two devices converge on the same one). */

@@ -46,9 +46,9 @@ X.contextMenus.onClicked.addListener(async (info, tab) => {
 
 X.runtime.onInstalled.addListener(async d => {
   await X.contextMenus.removeAll();
-  X.contextMenus.create({ id: 'page', title: 'Save page to Vault', contexts: ['page'] });
-  X.contextMenus.create({ id: 'link', title: 'Save link to Vault', contexts: ['link'] });
-  X.contextMenus.create({ id: 'open', title: 'Open Vault', contexts: ['action'] });
+  X.contextMenus.create({ id: 'page', title: 'Save page to Stashwise', contexts: ['page'] });
+  X.contextMenus.create({ id: 'link', title: 'Save link to Stashwise', contexts: ['link'] });
+  X.contextMenus.create({ id: 'open', title: 'Open Stashwise', contexts: ['action'] });
   X.alarms.create('sync', { periodInMinutes: 5 });
   if (d.reason === 'install') X.runtime.openOptionsPage();
 });

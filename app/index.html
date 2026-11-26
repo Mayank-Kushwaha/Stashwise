@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b0b0e" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f7f7f8" media="(prefers-color-scheme: light)">
-<title>AI Bookmark Vault</title>
+<title>Stashwise</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="../icons/icon32.png">
 <link rel="stylesheet" href="app.css">
@@ -38,7 +38,7 @@
 
 <header class="top">
   <button id="nav" class="ib mob" aria-label="Open sections" aria-expanded="false" aria-controls="side"><svg><use href="#i-menu"/></svg></button>
-  <div class="brand"><img src="../icons/icon32.png" alt="" width="24" height="24"><span>Vault</span></div>
+  <div class="brand"><img src="../icons/icon32.png" alt="" width="24" height="24"><span>Stashwise</span></div>
   <nav class="seg" aria-label="View"><button data-v="lib" class="on">Library</button><button data-v="ask"><svg><use href="#i-spark"/></svg>Ask AI</button></nav>
   <form id="sf" class="search" role="search">
     <svg><use href="#i-search"/></svg>
@@ -57,7 +57,7 @@
 
 <div class="shell">
   <aside id="side" aria-label="Sections">
-    <div class="dhead mob"><div class="brand"><img src="../icons/icon32.png" alt="" width="24" height="24"><span>Vault</span></div>
+    <div class="dhead mob"><div class="brand"><img src="../icons/icon32.png" alt="" width="24" height="24"><span>Stashwise</span></div>
       <button id="navX" class="ib" aria-label="Close sections"><svg><use href="#i-x"/></svg></button></div>
     <div id="tree"></div>
     <div class="dfoot mob">
@@ -106,7 +106,7 @@
 
 <dialog id="dSet" class="wide"><form method="dialog" id="fSet">
   <h2>Settings</h2>
-  <p class="hint lead">The Vault needs two free keys: a GitHub token to sync your bookmarks between devices, and a Gemini key for the AI. Both stay on this device only.</p>
+  <p class="hint lead">Stashwise needs two free keys: a GitHub token to sync your bookmarks between devices, and a Gemini key for the AI. Both stay on this device only.</p>
 
   <section class="key">
     <div class="kh"><span class="step">1</span><div><b>GitHub token</b><small>Syncs your library through a private Gist</small></div><span class="st" id="sGh"></span></div>
@@ -114,8 +114,8 @@
     <details><summary>How to get a GitHub token</summary>
       <ol>
         <li>Sign in to GitHub. Your email address must be verified.</li>
-        <li>Open <a href="https://github.com/settings/tokens/new?scopes=gist&amp;description=AI%20Bookmark%20Vault" target="_blank" rel="noopener">New personal access token (classic)</a>. This link fills in the name and ticks <code>gist</code>.<br><small>Manual route: profile picture → <b>Settings</b> → <b>Developer settings</b> → <b>Personal access tokens</b> → <b>Tokens (classic)</b> → <b>Generate new token</b> → <b>Generate new token (classic)</b>.</small></li>
-        <li><b>Note:</b> type a name, e.g. <i>AI Bookmark Vault</i>.</li>
+        <li>Open <a href="https://github.com/settings/tokens/new?scopes=gist&amp;description=Stashwise" target="_blank" rel="noopener">New personal access token (classic)</a>. This link fills in the name and ticks <code>gist</code>.<br><small>Manual route: profile picture → <b>Settings</b> → <b>Developer settings</b> → <b>Personal access tokens</b> → <b>Tokens (classic)</b> → <b>Generate new token</b> → <b>Generate new token (classic)</b>.</small></li>
+        <li><b>Note:</b> type a name, e.g. <i>Stashwise</i>.</li>
         <li><b>Expiration:</b> pick a date. Sync stops when the token expires, so choose a long period and make a new token when it ends.</li>
         <li><b>Scopes:</b> tick only <code>gist</code>. Leave everything else unticked so the token can't touch your repositories.</li>
         <li>Click <b>Generate token</b>, copy it (it starts with <code>ghp_</code>, and GitHub shows it only once), and paste it above.</li>
@@ -140,11 +140,11 @@
   <section class="key">
     <div class="kh"><span class="step">3</span><div><b>Your data Gist</b><small>Created automatically on the first sync</small></div></div>
     <p class="hint" id="gistInfo"></p>
-    <details><summary>Using the Vault on another device or your phone</summary>
+    <details><summary>Using Stashwise on another device or your phone</summary>
       <ol>
-        <li>Install the extension on the other browser, or open the <a href="https://mayank-kushwaha.github.io/Ai-Chrome-Extensions/app/" target="_blank" rel="noopener">phone app</a> and choose <b>Add to Home screen</b>.</li>
+        <li>Install the extension on the other browser, or open the <a href="https://mayank-kushwaha.github.io/Stashwise/app/" target="_blank" rel="noopener">phone app</a> and choose <b>Add to Home screen</b>.</li>
         <li>Paste the <b>same GitHub token</b> and your Gemini key there.</li>
-        <li>Press Save. The Vault finds this Gist by itself, so you never need to copy its ID.</li>
+        <li>Press Save. Stashwise finds this Gist by itself, so you never need to copy its ID.</li>
       </ol>
       <p class="hint">The Gist is "secret": it's not listed publicly, but anyone with its link can read it. Don't share the link.</p>
     </details>
@@ -165,8 +165,8 @@
   <p class="hint lead">The extension adds one-click saving (toolbar icon, Alt+Shift+S, right-click), nightly address checks and preview images. It isn't in a web store, so you install it yourself in about a minute.</p>
   <div class="dlbox">
     <span class="badge"><svg><use href="#i-dl"/></svg></span>
-    <div><b>ai-bookmark-vault.zip</b><small id="gxVer">Always the latest version from GitHub</small></div>
-    <a class="btn pri" id="gxDl" href="https://mayank-kushwaha.github.io/Ai-Chrome-Extensions/ai-bookmark-vault.zip" target="_blank" rel="noopener">Download</a>
+    <div><b>stashwise.zip</b><small id="gxVer">Always the latest version from GitHub</small></div>
+    <a class="btn pri" id="gxDl" href="https://mayank-kushwaha.github.io/Stashwise/stashwise.zip" target="_blank" rel="noopener">Download</a>
   </div>
   <nav class="seg gx" aria-label="Browser" id="gxTabs"><button type="button" data-b="chrome">Chrome</button><button type="button" data-b="brave">Brave</button><button type="button" data-b="edge">Edge</button><button type="button" data-b="firefox">Firefox</button></nav>
   <ol class="guide" id="gxSteps"></ol>
@@ -174,7 +174,7 @@
   <details class="adv"><summary>Updating to a new version</summary>
     <ol class="guide sm">
       <li>Download the zip again and extract it <b>into the same folder</b>, replacing the old files.</li>
-      <li>On the extensions page, click the <b>reload ↻</b> icon on the AI Bookmark Vault card.</li>
+      <li>On the extensions page, click the <b>reload ↻</b> icon on the Stashwise card.</li>
       <li>Keep using the same folder. The browser ties your settings to the folder's location; loading from a new folder starts fresh (your bookmarks come back after you paste the GitHub token again).</li>
     </ol>
   </details>

@@ -2,7 +2,7 @@
 const ext = (globalThis.browser ?? globalThis.chrome)?.storage?.local;
 let db;
 const open = () => db ??= new Promise((res, rej) => {
-  const r = indexedDB.open('vault', 1);
+  const r = indexedDB.open('vault', 1); // name kept from the old project name so existing phone-app data stays readable
   r.onupgradeneeded = () => r.result.createObjectStore('kv');
   r.onsuccess = () => res(r.result);
   r.onerror = () => rej(r.error);
