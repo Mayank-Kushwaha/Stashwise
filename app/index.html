@@ -27,6 +27,7 @@
   <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
   <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
   <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-4.5-4.5L5 21"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></symbol>
   <symbol id="i-book" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z"/></symbol>
 </svg>
 
@@ -95,15 +96,59 @@
   <menu><button value="x" class="btn ghost" formnovalidate>Cancel</button><button value="ok" class="btn pri">Save</button></menu>
 </form></dialog>
 
-<dialog id="dSet"><form method="dialog" id="fSet">
+<dialog id="dSet" class="wide"><form method="dialog" id="fSet">
   <h2>Settings</h2>
-  <label>GitHub token <small>classic, <code>gist</code> scope only</small><input name="gh" type="password" autocomplete="off" spellcheck="false"></label>
-  <label>Gemini API key <small>free key from aistudio.google.com</small><input name="gem" type="password" autocomplete="off" spellcheck="false"></label>
-  <label>Gemini text model <small>comma separated, falls back if one is overloaded</small><input name="gen"></label>
-  <label>Never send these sites to AI <small>comma separated words</small><input name="deny" placeholder="intranet, mybank"></label>
-  <p class="hint" id="info"></p>
-  <p class="hint">Keys stay on this device. Free-tier Gemini may use what you send to improve Google products. Private hosts and never-send sites are skipped.</p>
-  <div class="row tools"><button type="button" id="tGh" class="btn ghost">Test GitHub</button><button type="button" id="tGem" class="btn ghost">Test Gemini</button><button type="button" id="tImg" class="btn ghost" data-act="img" title="Look up preview images for sites that have none">Fetch previews</button><button type="button" id="exp" class="btn ghost">Export</button><label class="btn ghost">Import<input id="imp" type="file" accept=".json" hidden></label></div>
+  <p class="hint lead">The Vault needs two free keys: a GitHub token to sync your bookmarks between devices, and a Gemini key for the AI. Both stay on this device only.</p>
+
+  <section class="key">
+    <div class="kh"><span class="step">1</span><div><b>GitHub token</b><small>Syncs your library through a private Gist</small></div><span class="st" id="sGh"></span></div>
+    <div class="ki"><input name="gh" type="password" autocomplete="off" spellcheck="false" placeholder="ghp_…" aria-label="GitHub token"><button type="button" class="ib" data-eye="gh" aria-label="Show or hide token" title="Show or hide"><svg><use href="#i-eye"/></svg></button><button type="button" id="tGh" class="btn ghost">Test</button></div>
+    <details><summary>How to get a GitHub token</summary>
+      <ol>
+        <li>Sign in to GitHub. Your email address must be verified.</li>
+        <li>Open <a href="https://github.com/settings/tokens/new?scopes=gist&amp;description=AI%20Bookmark%20Vault" target="_blank" rel="noopener">New personal access token (classic)</a>. This link fills in the name and ticks <code>gist</code>.<br><small>Manual route: profile picture → <b>Settings</b> → <b>Developer settings</b> → <b>Personal access tokens</b> → <b>Tokens (classic)</b> → <b>Generate new token</b> → <b>Generate new token (classic)</b>.</small></li>
+        <li><b>Note:</b> type a name, e.g. <i>AI Bookmark Vault</i>.</li>
+        <li><b>Expiration:</b> pick a date. Sync stops when the token expires, so choose a long period and make a new token when it ends.</li>
+        <li><b>Scopes:</b> tick only <code>gist</code>. Leave everything else unticked so the token can't touch your repositories.</li>
+        <li>Click <b>Generate token</b>, copy it (it starts with <code>ghp_</code>, and GitHub shows it only once), and paste it above.</li>
+      </ol>
+    </details>
+  </section>
+
+  <section class="key">
+    <div class="kh"><span class="step">2</span><div><b>Gemini API key</b><small>Writes titles and topics, and powers Ask AI</small></div><span class="st" id="sGem"></span></div>
+    <div class="ki"><input name="gem" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your key" aria-label="Gemini API key"><button type="button" class="ib" data-eye="gem" aria-label="Show or hide key" title="Show or hide"><svg><use href="#i-eye"/></svg></button><button type="button" id="tGem" class="btn ghost">Test</button></div>
+    <details><summary>How to get a free Gemini key</summary>
+      <ol>
+        <li>Open <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio → API keys</a> and sign in with your Google account.</li>
+        <li>New users: accept the Terms of Service. AI Studio then creates a default project and key for you.</li>
+        <li>Otherwise click <b>Create API key</b> and choose a project. If you already use Google Cloud, you may need to import a project first: <b>Dashboard</b> → <b>Projects</b> → <b>Import projects</b>.</li>
+        <li>Copy the key and paste it above. No billing is needed for the free tier.</li>
+      </ol>
+      <p class="hint">On the free tier, Google may use what you send to improve its products. Private sites and anything on the never-send list below are never sent.</p>
+    </details>
+  </section>
+
+  <section class="key">
+    <div class="kh"><span class="step">3</span><div><b>Your data Gist</b><small>Created automatically on the first sync</small></div></div>
+    <p class="hint" id="gistInfo"></p>
+    <details><summary>Using the Vault on another device or your phone</summary>
+      <ol>
+        <li>Install the extension on the other browser, or open the <a href="https://mayank-kushwaha.github.io/Ai-Chrome-Extensions/app/" target="_blank" rel="noopener">phone app</a> and choose <b>Add to Home screen</b>.</li>
+        <li>Paste the <b>same GitHub token</b> and your Gemini key there.</li>
+        <li>Press Save. The Vault finds this Gist by itself, so you never need to copy its ID.</li>
+      </ol>
+      <p class="hint">The Gist is "secret": it's not listed publicly, but anyone with its link can read it. Don't share the link.</p>
+    </details>
+  </section>
+
+  <details class="adv"><summary>Advanced</summary>
+    <label>Gemini text model <small>comma separated, falls back if one is overloaded</small><input name="gen"></label>
+    <label>Never send these sites to AI <small>comma separated words</small><input name="deny" placeholder="intranet, mybank"></label>
+    <p class="hint" id="info"></p>
+    <div class="row tools"><button type="button" id="tImg" class="btn ghost" data-act="img" title="Look up preview images for sites that have none">Fetch previews</button><button type="button" id="exp" class="btn ghost">Export backup</button><label class="btn ghost">Import backup<input id="imp" type="file" accept=".json" hidden></label></div>
+  </details>
+
   <menu><button value="x" class="btn ghost" formnovalidate>Close</button><button value="ok" class="btn pri">Save</button></menu>
 </form></dialog>
 

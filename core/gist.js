@@ -38,4 +38,10 @@ export async function find(tok) {
   return hits.sort((a, b) => a.created_at < b.created_at ? -1 : 1)[0]?.id ?? null;
 }
 
-export const ping = tok => call(tok, '?per_page=1');
+/** Check a token. Returns its scopes (X-OAuth-Scopes, classic tokens), or null if GitHub doesn't report them. */
+export async function ping(tok) {
+  const r = await fetch(B + '?per_page=1', { headers: { Authorization: 'Bearer ' + tok, Accept: 'application/vnd.github+json' } });
+  if (!r.ok) throw Object.assign(new Error('GitHub ' + r.status), { status: r.status });
+  const h = r.headers.get('x-oauth-scopes');
+  return h == null ? null : h.split(',').map(s => s.trim()).filter(Boolean);
+}

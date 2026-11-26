@@ -148,10 +148,20 @@ function openEdit(id) {
   $('#dEdit').showModal();
 }
 
+/** Key status badge: ok = tested and working, no = missing, er = test failed. */
+const badge = (id, s, text) => { const e = $(id); e.className = 'st ' + s; e.textContent = text; };
 async function openSettings() {
   const c = await getCfg(), f = $('#fSet').elements;
-  for (const k of ['gh', 'gem', 'gen', 'deny']) f[k].value = c[k];
-  $('#info').textContent = `Device ${S.dev} · ${live().length} sites · ${Object.keys(S.q).length} waiting for AI · Gist ${c.gist || 'not created yet'}`;
+  for (const k of ['gh', 'gem', 'gen', 'deny']) { f[k].value = c[k]; f[k].type = ['gh', 'gem'].includes(k) ? 'password' : 'text'; }
+  badge('#sGh', c.gh ? (c.gist ? 'ok' : '') : 'no', c.gh ? (c.gist ? 'Connected' : 'Not tested') : 'Missing');
+  badge('#sGem', c.gem ? '' : 'no', c.gem ? 'Not tested' : 'Missing');
+  // Open the guide for whatever is missing, so first-time setup shows the steps straight away.
+  const [dGh, dGem] = $('#fSet').querySelectorAll('.key details');
+  dGh.open = !c.gh; dGem.open = !c.gem;
+  $('#gistInfo').innerHTML = c.gist
+    ? `Your bookmarks are stored in <a href="https://gist.github.com/${esc(c.gist)}" target="_blank" rel="noopener">this secret Gist</a>. Nothing to set up here.`
+    : 'Add a GitHub token above and press Save. The Vault then creates a secret Gist named <i>AI Bookmark Vault data</i>, or finds the one you already have.';
+  $('#info').textContent = `This device: ${S.dev} · ${live().length} sites · ${Object.keys(S.q).length} waiting for AI`;
   $('#dSet').showModal();
 }
 
@@ -266,13 +276,46 @@ $('#dSet').onclose = async e => {
   toast('Settings saved');
   doSync();
 };
-$('#tGh').onclick = () => busy('Testing GitHub', async () => { await G.ping(form().gh.trim()); toast('GitHub token works'); });
-$('#tGem').onclick = () => busy('Testing Gemini', async () => {
-  const c = { ...(await getCfg()), gem: form().gem.trim(), gen: form().gen.trim() };
-  await embed(c, 'ping');
-  await gen(c, 'Return {"ok":true}', { type: 'object', properties: { ok: { type: 'boolean' } }, required: ['ok'] });
-  toast('Gemini key works (text + embeddings)');
+// Show/hide a key field.
+$('#fSet').addEventListener('click', e => {
+  const b = e.target.closest('[data-eye]');
+  if (b) { const i = $('#fSet').elements[b.dataset.eye]; i.type = i.type === 'password' ? 'text' : 'password'; }
 });
+$('#fSet').addEventListener('input', e => {
+  if (e.target.name === 'gh') badge('#sGh', e.target.value.trim() ? '' : 'no', e.target.value.trim() ? 'Not tested' : 'Missing');
+  if (e.target.name === 'gem') badge('#sGem', e.target.value.trim() ? '' : 'no', e.target.value.trim() ? 'Not tested' : 'Missing');
+});
+// Tests report in plain words what's wrong and how to fix it.
+$('#tGh').onclick = async () => {
+  const tok = form().gh.trim();
+  if (!tok) return badge('#sGh', 'no', 'Missing'), toast('Paste a GitHub token first');
+  badge('#sGh', '', 'Testing…');
+  try {
+    const sc = await G.ping(tok);
+    if (sc && !sc.includes('gist')) return badge('#sGh', 'er', 'No gist scope'), toast('This token is missing the gist scope. Make a new one with "gist" ticked.');
+    badge('#sGh', 'ok', 'Works');
+    toast(sc?.some(s => s === 'repo' || s.startsWith('admin') || s.startsWith('delete'))
+      ? `Works, but it also has: ${sc.filter(s => s !== 'gist').join(', ')}. Safer: make a token with only "gist".`
+      : 'GitHub token works');
+  } catch (e) {
+    badge('#sGh', 'er', 'Failed');
+    toast(e.status === 401 ? 'GitHub rejected this token. It may be mistyped, expired, or deleted.' : `GitHub test failed: ${e.message}`);
+  }
+};
+$('#tGem').onclick = async () => {
+  const c = { ...(await getCfg()), gem: form().gem.trim(), gen: form().gen.trim() };
+  if (!c.gem) return badge('#sGem', 'no', 'Missing'), toast('Paste a Gemini key first');
+  badge('#sGem', '', 'Testing…');
+  try {
+    await embed(c, 'ping');
+    await gen(c, 'Return {"ok":true}', { type: 'object', properties: { ok: { type: 'boolean' } }, required: ['ok'] });
+    badge('#sGem', 'ok', 'Works');
+    toast('Gemini key works (text + embeddings)');
+  } catch (e) {
+    badge('#sGem', 'er', 'Failed');
+    toast({ 400: 'Gemini rejected the key. Check it was copied in full.', 401: 'Gemini rejected the key.', 403: 'This key is not allowed to use the Gemini API. Create a new key in AI Studio.', 429: 'Key works, but the free limit is used up for now. Try again later.', 503: 'Key is fine; Gemini is busy right now. Try again in a minute.' }[e.status] || `Gemini test failed: ${e.message}`);
+  }
+};
 
 $('#exp').onclick = async () => {
   await tx(() => 0);
