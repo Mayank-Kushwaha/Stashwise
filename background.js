@@ -5,6 +5,7 @@ import { extractPage } from './extractor.js';
 import { savePage, saveUrl, retry } from './core/save.js';
 import { sync } from './core/store.js';
 import { backfill } from './core/images.js';
+import { nightly } from './core/watch.js';
 
 const mark = (tabId, text, color) => {
   if (tabId == null) return;
@@ -57,4 +58,5 @@ X.alarms.onAlarm.addListener(async a => {
   await sync().catch(() => {});
   await retry().catch(() => {});
   await backfill().catch(() => {}); // no-op unless the optional all-sites permission was granted
+  await nightly().catch(() => {});  // address watch: runs once the night's random 1-5 am slot has passed
 });

@@ -29,6 +29,8 @@ async function add(url, title, desc, q, c, media = {}) {
   const id = await idOf(url);
   const dup = await tx(async () => {
     if (S.bm[id] && !S.bm[id].del) return true;
+    // Same site saved before under its current or a previous address (address watch can change b.url).
+    if (live().some(b => b.url === url || b.hist?.some(h => h.u === url))) return true;
     const now = Date.now();
     put({ id, url, t: clip(title, 120) || host(url), d: clip(desc, 260), tags: [], sec: 'Unsorted', top: 'Inbox', ts: now, u: now, pend: 1, ...media });
     S.q[id] = { d: q, n: 0 };

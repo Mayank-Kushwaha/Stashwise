@@ -11,6 +11,8 @@ One-click save for Chrome, Edge, Brave and Firefox. Gemini (free tier) writes th
 
 Second device: install the same way, paste the same GitHub token. The Gist is found automatically.
 
+**Install from the zip:** the dashboard's **Get extension** button (next to Add) links to `ai-bookmark-vault.zip` on GitHub Pages, with step-by-step instructions for Chrome, Brave, Edge and Firefox. The Pages workflow rebuilds the zip on every push from the committed runtime files only (`manifest.json`, `background.js`, `extractor.js`, `README.md`, `app/`, `core/`, `icons/`).
+
 ## Use
 - Click the toolbar icon, press **Alt+Shift+S**, or right-click a page or link → *Save to Vault*. Badge: ✓ saved, = already saved, ✕ blocked/invalid, ! error.
 - **Alt+Shift+V** or right-click the icon → *Open Vault* (full tab, resizable).
@@ -19,6 +21,13 @@ Second device: install the same way, paste the same GitHub token. The Gist is fo
 - **⌨** (top right, or press `?`): list of shortcuts. On the dashboard: `/` search, `A` Ask AI, `N` save a URL, `Esc` close.
 - **Previews:** cards show the site's preview image (`og:image`), or its icon on a coloured placeholder. New saves get it from the open tab. For older sites and sites saved from the phone, click **Enable** on the dashboard notice (or Settings → *Fetch previews*). The browser asks once for permission to read pages, and the extension then reads each saved page's HTML. No AI is used. Images load straight from each site with no referrer sent.
 - **Pin** a card to keep it at the top of its category.
+- **Watch address** (radar icon on a card): for sites that keep moving to new domains. Once a night (random time 1-5 am, or when you next open the browser) the desktop extension requests the page with no cookies and no AI:
+  - Server redirect, refresh tag, script redirect or canonical link to a new domain whose name and title match the saved site: the address is updated automatically and the old one is kept (up to 5) so you can restore it.
+  - New address that doesn't clearly match (e.g. twitter.com → x.com): shown as **New address found** for you to accept or reject. Rejected addresses aren't suggested again.
+  - Parking or for-sale pages are never followed.
+  - Bot-protection pages count as "couldn't check"; for those and script-only pages the extension briefly opens the site in a muted background tab.
+  - After 3 failed nights in a row the card shows **Unreachable**. Paste the new address in Edit if you know it.
+  - Uses the same optional all-sites permission as previews. The phone app shows the results after a sync but doesn't run checks.
 - **⇄** Re-organize: merges near-duplicate topics and moves clear outliers. Local, uses no AI tokens. Preview, apply, undo.
 
 ## Mobile

@@ -11,8 +11,8 @@ export const ask = () => X.permissions.request(ORIGINS); // must be called from 
 /** Absolute http(s) URL or ''. */
 export const abs = (u, base) => { try { const x = new URL(u, base); return /^https?:$/.test(x.protocol) ? x.href.slice(0, 600) : ''; } catch { return ''; } };
 
-const attr = (tag, n) => tag.match(new RegExp(`\\s${n}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, 'i'))?.slice(1).find(v => v != null);
-const unent = s => s?.replace(/&amp;/g, '&').replace(/&#x2F;/gi, '/').replace(/&#47;/g, '/').replace(/&quot;/g, '"').trim();
+export const attr = (tag, n) => tag.match(new RegExp(`\\s${n}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, 'i'))?.slice(1).find(v => v != null);
+export const unent = s => s?.replace(/&amp;/g, '&').replace(/&#x2F;/gi, '/').replace(/&#47;/g, '/').replace(/&quot;/g, '"').trim();
 const IMG = ['og:image:secure_url', 'og:image:url', 'og:image', 'twitter:image', 'twitter:image:src'];
 
 /** Pull {img, ico} out of raw HTML (regex: the background service worker has no DOMParser). */

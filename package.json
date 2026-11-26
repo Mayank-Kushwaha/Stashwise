@@ -5,7 +5,7 @@
   "type": "module",
   "description": "No dependencies. Scripts use only Node built-ins.",
   "scripts": {
-    "test": "node --test tests/core.test.mjs",
+    "test": "node --test tests/core.test.mjs tests/watch.test.mjs",
     "live": "node tests/live.mjs",
     "icons": "node tools/make-icons.mjs"
   }

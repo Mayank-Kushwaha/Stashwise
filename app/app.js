@@ -1,5 +1,5 @@
 // Dashboard. Runs as the extension's full-tab page and as the mobile PWA (same code).
-import { X, esc, host, tc, clip } from '../core/util.js';
+import { X, esc, host, tc, clip, normUrl } from '../core/util.js';
 import { get, set, getCfg, saveCfg } from '../core/kv.js';
 import { S, tx, live, put, persist, push, sync } from '../core/store.js';
 import { index } from '../core/topics.js';
@@ -8,9 +8,13 @@ import { saveUrl, edit, pin, remove, retry, ask, semantic, preview, applyMoves }
 import * as G from '../core/gist.js';
 import { embed, gen } from '../core/ai.js';
 import * as IM from '../core/images.js';
+import * as W from '../core/watch.js';
 
 const $ = s => document.querySelector(s);
-const st = { sec: '', top: '', q: '', fused: null, pend: false, lim: 120, view: 'lib', synced: '' };
+// f = special sidebar filter: '' | pend (waiting for AI) | watch (watched) | iss (address issues)
+const st = { sec: '', top: '', q: '', fused: null, f: '', lim: 120, view: 'lib', synced: '' };
+const FILT = { pend: b => b.pend, watch: b => b.w, iss: b => b.w && (b.wv || b.wd) };
+const FLBL = { pend: 'Waiting for AI', watch: 'Watched addresses', iss: 'Address issues' };
 let timer;
 
 const toast = m => {
@@ -26,7 +30,7 @@ const busy = async (label, f) => { toast(label + '…'); try { const r = await f
 /* ---------- render ---------- */
 function items() {
   let l = live();
-  if (st.pend) l = l.filter(b => b.pend);
+  if (st.f) l = l.filter(FILT[st.f]);
   else if (st.sec) l = l.filter(b => b.sec === st.sec && (!st.top || b.top === st.top));
   // Pinned first (most recently pinned on top), then newest. Search results keep relevance order.
   if (!st.q) return l.sort((a, b) => (b.pin || 0) - (a.pin || 0) || b.ts - a.ts);
@@ -40,11 +44,12 @@ const hue = s => { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) 
 function side() {
   const all = live(), { t } = index(all), secs = {};
   for (const x of Object.values(t)) (secs[x.sec] ??= []).push(x);
-  const pend = all.filter(b => b.pend).length, pins = all.filter(b => b.pin).length;
-  const on = (s, p) => st.sec === s && st.top === p && !st.pend ? ' on' : '';
+  const n = k => all.filter(FILT[k]).length, pins = all.filter(b => b.pin).length;
+  const on = (s, p) => st.sec === s && st.top === p && !st.f ? ' on' : '';
   const it = (cls, attrs, label, n, icon = '') => `<button class="it${cls}" ${attrs}>${icon}<span>${esc(label)}</span><i>${n}</i></button>`;
-  let h = it(st.sec || st.pend ? '' : ' on', 'data-s="" data-p=""', 'All sites', all.length, ic('grid'));
-  if (pend) h += it(' warn' + (st.pend ? ' on' : ''), 'data-pend="1"', 'Waiting for AI', pend, ic('clock'));
+  const fi = (k, cls, icon) => { const c = n(k); return c ? it(cls + (st.f === k ? ' on' : ''), `data-f="${k}"`, FLBL[k], c, ic(icon)) : ''; };
+  let h = it(st.sec || st.f ? '' : ' on', 'data-s="" data-p=""', 'All sites', all.length, ic('grid'))
+    + fi('pend', ' warn', 'clock') + fi('iss', ' bad', 'alert') + fi('watch', '', 'radar');
   for (const s of Object.keys(secs).sort((a, b) => a === 'Unsorted' ? 1 : b === 'Unsorted' ? -1 : a.localeCompare(b))) {
     const n = secs[s].reduce((a, x) => a + x.ids.length, 0);
     h += `<div class="grp">${it(' sec' + on(s, ''), `data-s="${esc(s)}" data-p=""`, s, n)}`;
@@ -66,22 +71,32 @@ const letter = h => esc((h[0] || '?').toUpperCase());
 const banner = (b, h) => b.img
   ? `<div class="pv" style="--h:${hue(h)}" data-l="${letter(h)}">${pic(b.img)}</div>`
   : `<div class="pv ph" style="--h:${hue(h)}">${b.ico ? pic(b.ico) : ''}<span>${letter(h)}</span></div>`;
+// Address-watch status chip on the banner; clicking it opens the watch details.
+const WEEK = 7 * 864e5;
+const wchip = b => {
+  const c = b.wv ? ['rv', 'alert', 'New address found']
+    : b.wd ? ['dn', 'alert', 'Unreachable']
+      : b.wch && Date.now() - b.wch < WEEK ? ['up', 'check', 'Address updated']
+        : b.w ? ['on', 'radar', 'Watching'] : null;
+  return c ? `<button class="wc ${c[0]}" data-wd="${b.id}" title="Address watch details">${ic(c[1])}<span>${c[2]}</span></button>` : '';
+};
+const watchBtn = b => `<button class="ib" data-w="${b.id}" aria-pressed="${!!b.w}" title="${b.w ? 'Stop watching the address' : 'Watch the address: check every night if the site moved'}" aria-label="${b.w ? 'Stop watching address' : 'Watch address'}">${ic('radar')}</button>`;
 const card = b => { const h = host(b.url); return `<article class="card${b.pin ? ' pinned' : ''}">
-${banner(b, h)}
+${wchip(b)}${banner(b, h)}
 <div class="hd"><div class="av" style="--h:${hue(h)}">${esc((h[0] || '?').toUpperCase())}${b.ico ? pic(b.ico) : ''}</div><div class="hb">
 <a class="t" href="${safe(b.url)}" target="_blank" rel="noopener noreferrer">${esc(b.t)}</a><div class="host">${esc(h)}</div></div>${b.pin ? `<span class="pinb" title="Pinned">${ic('pin')}</span>` : ''}</div>
 ${b.d ? `<p class="d">${esc(b.d)}</p>` : ''}
 ${b.tags?.length ? `<div class="tg">${b.tags.map(x => `<span>${esc(x)}</span>`).join('')}</div>` : ''}
 <div class="ft">${b.pend ? '<span class="chip">Waiting for AI</span>' : `<span class="cat">${esc(b.sec)} · ${esc(b.top)}</span>`}
-<div class="ca">${pinBtn(b)}<button class="ib" data-e="${b.id}" title="Edit" aria-label="Edit">${ic('edit')}</button><button class="ib del" data-x="${b.id}" title="Delete" aria-label="Delete">${ic('trash')}</button></div></div></article>`; };
+<div class="ca">${watchBtn(b)}${pinBtn(b)}<button class="ib" data-e="${b.id}" title="Edit" aria-label="Edit">${ic('edit')}</button><button class="ib del" data-x="${b.id}" title="Delete" aria-label="Delete">${ic('trash')}</button></div></div></article>`; };
 
 const empty = (icon, title, text) => `<div class="empty"><span class="badge">${ic(icon)}</span><h3>${esc(title)}</h3><p>${esc(text)}</p></div>`;
 
 function list() {
   const l = items(), show = l.slice(0, st.lim);
-  $('#vt').textContent = st.q ? `Results for “${st.q}”` : st.pend ? 'Waiting for AI' : st.top || st.sec || 'All sites';
+  $('#vt').textContent = st.q ? `Results for “${st.q}”` : st.f ? FLBL[st.f] : st.top || st.sec || 'All sites';
   const n = `${l.length} ${l.length === 1 ? 'site' : 'sites'}`;
-  $('#vs').textContent = [st.top && !st.q ? `${st.sec} · ${n}` : n, !st.q && !st.sec && !st.pend && st.pins ? `${st.pins} pinned` : '', st.synced && `Synced ${st.synced}`].filter(Boolean).join(' · ');
+  $('#vs').textContent = [st.top && !st.q ? `${st.sec} · ${n}` : n, !st.q && !st.sec && !st.f && st.pins ? `${st.pins} pinned` : '', st.synced && `Synced ${st.synced}`].filter(Boolean).join(' · ');
   const miss = st.imgOk === false && live().filter(b => b.img === undefined).length;
   $('#imgBar').hidden = !miss;
   if (miss) $('#imgN').textContent = `${miss} ${miss === 1 ? 'site has' : 'sites have'} no preview yet.`;
@@ -143,7 +158,7 @@ async function doAsk(q) {
 function openEdit(id) {
   const b = S.bm[id], f = $('#fEdit').elements;
   $('#dEdit').dataset.id = id;
-  f.t.value = b.t; f.d.value = b.d || ''; f.tags.value = (b.tags || []).join(', ');
+  f.url.value = b.url; f.t.value = b.t; f.d.value = b.d || ''; f.tags.value = (b.tags || []).join(', ');
   f.sec.value = b.sec; f.top.value = b.top;
   $('#dEdit').showModal();
 }
@@ -180,14 +195,18 @@ document.addEventListener('click', e => {
     });
   }
   else if (t.dataset.act === 're') { nav(false); $('#re').click(); }
+  else if (t.dataset.act === 'getx') openGet();
   else if (t.dataset.act === 'img') enableImages();
   else if (t.dataset.act === 'imgX') { st.imgOk = null; list(); }
   else if (t.closest('#ex')) doAsk(t.textContent);
   else if (t.dataset.e) openEdit(t.dataset.e);
   else if (t.dataset.x) { if (confirm('Delete this bookmark?')) remove(t.dataset.x).then(() => { render(); toast('Deleted'); }); }
   else if (t.id === 'more') { st.lim += 120; list(); }
+  else if (t.dataset.w) withPerm(() => toggleWatch(t.dataset.w));
+  else if (t.dataset.wd) openWatch(t.dataset.wd);
+  else if (t.dataset.wa) watchAct(t.dataset.wa, t.dataset.v);
   else if (t.closest('#tree')) {
-    st.pend = !!t.dataset.pend; st.sec = t.dataset.s || ''; st.top = t.dataset.p || '';
+    st.f = t.dataset.f || ''; st.sec = t.dataset.s || ''; st.top = t.dataset.p || '';
     if (st.view !== 'lib') document.querySelector('[data-v=lib]').click();
     nav(false); render(); $('main').scrollTop = 0;
   }
@@ -211,6 +230,132 @@ async function runBackfill(manual) {
   render();
   if (manual) toast(n ? `Added ${n} preview ${n === 1 ? 'image' : 'images'}` : 'Done. No new preview images found.');
 }
+/* Get extension: download + install guide */
+const GX = {
+  chrome: { page: 'chrome://extensions', dev: '<b>Developer mode</b> (switch at the top right)' },
+  brave: { page: 'brave://extensions', dev: '<b>Developer mode</b> (switch at the top right)' },
+  edge: { page: 'edge://extensions', dev: '<b>Developer mode</b> (switch in the left panel; on narrow windows open the ☰ menu first)' },
+};
+const detect = () => navigator.brave ? 'brave' : /Edg\//.test(navigator.userAgent) ? 'edge' : /Firefox\//.test(navigator.userAgent) ? 'firefox' : 'chrome';
+const copyBtn = t => `<button type="button" class="cp" data-copy="${esc(t)}" title="Copy">${ic('copy')}<code>${esc(t)}</code></button>`;
+function gxRender(br) {
+  document.querySelectorAll('#gxTabs button').forEach(b => b.classList.toggle('on', b.dataset.b === br));
+  const keep = '<small>Keep this folder; the browser runs the extension from it. Don\'t delete or move it.</small>';
+  const after = [
+    'Pin it: click the puzzle-piece icon in the toolbar, then the pin next to <b>AI Bookmark Vault</b>.',
+    'The Vault opens by itself. In <b>Settings</b>, paste the <b>same GitHub token</b> you use on your other devices, plus your Gemini key. Your bookmarks sync in.',
+  ];
+  const steps = br === 'firefox' ? [
+    `Download the zip and extract it (right-click → <b>Extract All</b>).`,
+    `Open ${copyBtn('about:debugging#/runtime/this-firefox')} in a new tab. Paste it into the address bar; pages can't open it for you.`,
+    'Click <b>Load Temporary Add-on…</b> and select the <b>manifest.json</b> file inside the extracted folder.',
+    ...after,
+    '<small>Firefox removes temporary add-ons when it closes, so you repeat step 3 after each restart. Permanent installs in Firefox need the add-on to be signed by Mozilla.</small>',
+  ] : [
+    `Download the zip and extract it (right-click → <b>Extract All</b>). ${keep}`,
+    `Open ${copyBtn(GX[br].page)} in a new tab. Paste it into the address bar; pages can't open it for you.`,
+    `Turn on ${GX[br].dev}.`,
+    'Click <b>Load unpacked</b> and select the extracted folder (the one that contains <code>manifest.json</code>).',
+    ...after,
+    '<small>An "Errors" button with a warning that <code>background.scripts</code> requires manifest version 2 is expected. That line is there for Firefox and is harmless.</small>',
+  ];
+  const note = steps.pop(); // last entry is a note, not a step
+  $('#gxSteps').innerHTML = steps.map(s => `<li>${s}</li>`).join('');
+  $('#gxNote').innerHTML = note;
+}
+function openGet() {
+  const v = X?.runtime?.getManifest?.().version;
+  $('#gxVer').textContent = v ? `You're running the extension, version ${v}. Download again to update.` : 'Always the latest version from GitHub';
+  gxRender(detect());
+  nav(false);
+  $('#dGet').showModal();
+}
+$('#getx').onclick = openGet;
+$('#gxTabs').addEventListener('click', e => { const b = e.target.closest('[data-b]'); if (b) gxRender(b.dataset.b); });
+$('#gxSteps').addEventListener('click', e => {
+  const b = e.target.closest('[data-copy]');
+  if (!b) return;
+  navigator.clipboard.writeText(b.dataset.copy).then(() => toast('Copied. Paste it into the address bar.'), () => toast('Copy failed. Select the text and copy it.'));
+});
+
+/* Address watch */
+// Checks need the all-sites permission (same one as previews). Must be requested inside the click, before any await.
+function withPerm(f) {
+  if (st.imgOk !== false) return f(); // granted, or the PWA (where the desktop extension does the checking)
+  IM.ask().then(ok => {
+    if (!ok) return toast('Permission is needed to check websites.');
+    st.imgOk = true;
+    f();
+    runBackfill(false);
+  }).catch(e => toast('Could not request permission: ' + e.message));
+}
+const RES = {
+  ok: 'Reachable. The address has not changed.',
+  moved: r => `Address updated to ${host(r.to)}`,
+  review: r => `Possible new address: ${host(r.to)}. Review it on the card.`,
+  fail: 'Not reachable right now. Nightly checks will keep trying.',
+  unknown: 'Couldn\'t check: the site blocks automated visits. It will be tried again tonight.',
+};
+const say = r => { const m = RES[r?.st]; toast(typeof m === 'function' ? m(r) : m || 'Check finished'); };
+async function checkNow(id) {
+  if (!X?.permissions) return toast('Checks run in the desktop extension.');
+  toast('Checking the address…');
+  const r = await W.checkOne(id).catch(() => null);
+  await tx(() => 0);
+  render();
+  if ($('#dWatch').open) openWatch(id);
+  say(r);
+}
+async function toggleWatch(id) {
+  const on = !S.bm[id]?.w;
+  await W.setWatch(id, on);
+  render();
+  if (!on) return toast('Stopped watching this address');
+  if (X?.permissions) checkNow(id);
+  else toast('Watching. Your desktop extension checks it every night.');
+}
+const ago = t => { const m = Math.round((Date.now() - t) / 60e3); return m < 2 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : new Date(t).toLocaleDateString(); };
+const LAST = { ok: 'reachable, address unchanged', moved: 'address updated', review: 'possible new address found', fail: 'not reachable', unknown: 'could not check (bot protection)' };
+async function openWatch(id) {
+  const b = S.bm[id];
+  if (!b) return;
+  const ws = await W.watchState(), last = ws.chk[id], fails = ws.f[id] || 0, ext = !!X?.permissions;
+  const link = u => `<a href="${safe(u)}" target="_blank" rel="noopener noreferrer">${esc(u)}</a>`;
+  $('#dWatch').dataset.id = id;
+  $('#wBody').innerHTML = `
+    <p class="wt"><b>${esc(b.t)}</b><br>${link(b.url)}</p>
+    <label class="sw"><input type="checkbox" data-wt ${b.w ? 'checked' : ''}><span>Watch this address every night</span></label>
+    <p class="hint">${ext
+      ? 'Checked once a night between 1 and 5 am (or when you next open the browser). One request, no cookies, no AI.'
+      : 'Your desktop extension does the checking; changes show up here after a sync.'}</p>
+    ${last ? `<p class="hint">Last check on this device: ${ago(last.at)}, ${LAST[last.st] || last.st}${last.why ? ` (${esc(last.why)})` : ''}.${fails ? ` Failed ${fails} night${fails > 1 ? 's' : ''} in a row.` : ''}</p>` : ''}
+    ${b.wv ? `<div class="wbox rv"><b>New address found</b><p>${esc(b.wv.why)}:</p><p>${link(b.wv.to)}</p>
+      <p class="hint">It wasn't switched automatically because the new site doesn't clearly match the saved one. Open it to check before you switch.</p>
+      <div class="row"><button type="button" class="btn pri" data-wa="accept">Use new address</button><button type="button" class="btn ghost" data-wa="reject">Keep current</button></div></div>` : ''}
+    ${b.wd ? `<div class="wbox dn"><b>Unreachable since ${new Date(b.wd).toLocaleDateString()}</b><p>The site hasn't answered for ${FAILS_TXT} nights and doesn't forward anywhere. If you know its new address, paste it in Edit.</p></div>` : ''}
+    ${b.wch && Date.now() - b.wch < WEEK && b.hist?.[0] ? `<div class="wbox up"><b>Address updated ${ago(b.wch)}</b><p>Moved from ${esc(host(b.hist[0].u))} to ${esc(host(b.url))}.</p></div>` : ''}
+    ${b.hist?.length ? `<p class="lbl">Previous addresses</p><div class="list">${b.hist.map(h => `<div class="hrow"><span>${esc(h.u)}<br><small>until ${new Date(h.at).toLocaleDateString()}</small></span><button type="button" class="btn ghost" data-wa="restore" data-v="${esc(h.u)}">Restore</button></div>`).join('')}</div>` : ''}`;
+  $('#wChk').hidden = !ext;
+  if (!$('#dWatch').open) $('#dWatch').showModal();
+}
+const FAILS_TXT = '3';
+async function watchAct(a, v) {
+  const id = $('#dWatch').dataset.id;
+  if (a === 'accept') { await W.accept(id); toast('Address updated'); }
+  else if (a === 'reject') { await W.reject(id); toast('Kept the current address. That new address won\'t be suggested again.'); }
+  else if (a === 'restore') { await W.setUrl(id, v); toast('Previous address restored'); }
+  await tx(() => 0);
+  render();
+  openWatch(id);
+}
+$('#wBody').addEventListener('change', e => {
+  if (!e.target.matches('[data-wt]')) return;
+  const id = $('#dWatch').dataset.id;
+  if (e.target.checked && st.imgOk === false) { e.target.checked = false; return withPerm(() => toggleWatch(id).then(() => openWatch(id))); }
+  toggleWatch(id).then(() => openWatch(id));
+});
+$('#wChk').onclick = () => withPerm(() => checkNow($('#dWatch').dataset.id));
+
 // A broken (or tracking-pixel-sized) preview turns its banner into the letter placeholder.
 const toPh = pv => { pv.classList.add('ph'); pv.innerHTML = `<span>${esc(pv.dataset.l || '?')}</span>`; };
 document.addEventListener('error', e => {
@@ -253,12 +398,15 @@ $('#se').onclick = openSettings;
 
 $('#dEdit').onclose = async e => {
   if (e.target.returnValue !== 'ok') return;
-  const f = $('#fEdit').elements;
-  await edit(e.target.dataset.id, {
+  const f = $('#fEdit').elements, id = e.target.dataset.id;
+  await edit(id, {
     t: clip(f.t.value, 120), d: clip(f.d.value, 260),
     tags: f.tags.value.split(',').map(x => clip(x, 24).toLowerCase()).filter(Boolean).slice(0, 8),
     sec: tc(clip(f.sec.value, 30)), top: tc(clip(f.top.value, 40)), pend: 0,
   });
+  const url = normUrl(f.url.value);
+  if (!url) toast('Address not changed: it is not a valid web address');
+  else if (url !== S.bm[id]?.url) { await W.setUrl(id, url); toast('Address changed. The old one is kept under Address watch.'); }
   render();
 };
 $('#dAdd').onclose = async e => {

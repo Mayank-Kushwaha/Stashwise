@@ -28,6 +28,11 @@
   <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
   <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-4.5-4.5L5 21"/></symbol>
   <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-radar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8a6 6 0 0 1 0 8.4M7.8 16.2a6 6 0 0 1 0-8.4M19 5a10 10 0 0 1 0 14M5 19A10 10 0 0 1 5 5"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0ZM12 9v4M12 17h.01"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-dl" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></symbol>
   <symbol id="i-book" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z"/></symbol>
 </svg>
 
@@ -41,6 +46,7 @@
     <kbd class="desk">/</kbd>
   </form>
   <div class="acts">
+    <button id="getx" class="btn ghost desk" title="Download the browser extension and install guide"><svg><use href="#i-dl"/></svg><span>Get extension</span></button>
     <button id="add" class="btn pri" title="Save a URL (N)" aria-label="Save a URL"><svg><use href="#i-plus"/></svg><span>Add</span></button>
     <button id="re" class="ib desk" title="Re-organize topics" aria-label="Re-organize topics"><svg><use href="#i-shuffle"/></svg></button>
     <button id="sy" class="ib" title="Sync now" aria-label="Sync now"><svg><use href="#i-sync"/></svg></button>
@@ -56,6 +62,7 @@
     <div id="tree"></div>
     <div class="dfoot mob">
       <button class="btn ghost" data-act="re"><svg><use href="#i-shuffle"/></svg>Re-organize topics</button>
+      <button class="btn ghost" data-act="getx"><svg><use href="#i-dl"/></svg>Get the browser extension</button>
     </div>
   </aside>
   <div id="scrim" class="mob" hidden></div>
@@ -81,6 +88,7 @@
 
 <dialog id="dEdit"><form method="dialog" id="fEdit">
   <h2>Edit bookmark</h2>
+  <label>Address<input name="url" type="url" required inputmode="url" spellcheck="false"></label>
   <label>Title<input name="t" required maxlength="120"></label>
   <label>Description<textarea name="d" rows="3" maxlength="260"></textarea></label>
   <label>Tags <small>comma separated</small><input name="tags"></label>
@@ -150,6 +158,33 @@
   </details>
 
   <menu><button value="x" class="btn ghost" formnovalidate>Close</button><button value="ok" class="btn pri">Save</button></menu>
+</form></dialog>
+
+<dialog id="dGet" class="wide"><form method="dialog">
+  <h2>Get the browser extension</h2>
+  <p class="hint lead">The extension adds one-click saving (toolbar icon, Alt+Shift+S, right-click), nightly address checks and preview images. It isn't in a web store, so you install it yourself in about a minute.</p>
+  <div class="dlbox">
+    <span class="badge"><svg><use href="#i-dl"/></svg></span>
+    <div><b>ai-bookmark-vault.zip</b><small id="gxVer">Always the latest version from GitHub</small></div>
+    <a class="btn pri" id="gxDl" href="https://mayank-kushwaha.github.io/Ai-Chrome-Extensions/ai-bookmark-vault.zip" target="_blank" rel="noopener">Download</a>
+  </div>
+  <nav class="seg gx" aria-label="Browser" id="gxTabs"><button type="button" data-b="chrome">Chrome</button><button type="button" data-b="brave">Brave</button><button type="button" data-b="edge">Edge</button><button type="button" data-b="firefox">Firefox</button></nav>
+  <ol class="guide" id="gxSteps"></ol>
+  <p class="hint" id="gxNote"></p>
+  <details class="adv"><summary>Updating to a new version</summary>
+    <ol class="guide sm">
+      <li>Download the zip again and extract it <b>into the same folder</b>, replacing the old files.</li>
+      <li>On the extensions page, click the <b>reload ↻</b> icon on the AI Bookmark Vault card.</li>
+      <li>Keep using the same folder. The browser ties your settings to the folder's location; loading from a new folder starts fresh (your bookmarks come back after you paste the GitHub token again).</li>
+    </ol>
+  </details>
+  <menu><button value="x" class="btn pri">Done</button></menu>
+</form></dialog>
+
+<dialog id="dWatch" class="wide"><form method="dialog">
+  <h2>Address watch</h2>
+  <div id="wBody"></div>
+  <menu><button value="x" class="btn ghost">Close</button><button type="button" id="wChk" class="btn pri">Check now</button></menu>
 </form></dialog>
 
 <dialog id="dKb"><form method="dialog">
